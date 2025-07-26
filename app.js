@@ -343,47 +343,51 @@ $('#load-standard-roles').addEventListener('click', () => {
 let currentQRData = null;
 
 $('#qr-generator-form').addEventListener('submit', e => {
-    e.preventDefault();
-    generateIndividualQR();
+  e.preventDefault();
+  generateIndividualQR();
 });
 
 function generateIndividualQR() {
-    const vID = $('#qr-volunteer').value;
-    const mID = $('#qr-meet').value;
-    const rID = $('#qr-role').value;
+  const vID = $('#qr-volunteer').value;
+  const mID = $('#qr-meet').value;
+  const rID = $('#qr-role').value;
 
-    if (!vID || !mID || !rID) {
-        alert('Please select volunteer, meet, and role');
+  // Guard clause – all three fields required
+  if (!vID || !mID || !rID) {
+    alert('Please select a volunteer, meet, and role first');
+    return;
+  }
+
+  // Build a unique, tamper-evident payload
+  const payload = {
+    volunteerID: vID,
+    meetID:      mID,
+    roleID:      rID,
+    timestamp:   Date.now(),
+    nonce:       Math.random().toString(36).slice(2)   // anti-collision salt
+  };
+
+  currentQRData = payload;
+
+  // Clear any previous code
+  const qrDiv = $('#qr-code-container');
+  qrDiv.innerHTML = '';
+
+  // *** KEY LINE: stringify the payload ***
+  QRCode.toCanvas(
+    JSON.stringify(payload),           // must be a string
+    { width: 240, margin: 2 },
+    (err, canvas) => {
+      if (err) {
+        alert('QR generation error: ' + err);
         return;
+      }
+      qrDiv.appendChild(canvas);
+      $('#download-qr').style.display = 'inline-block';
     }
-
-    // Build unique payload
-    const payload = {
-        volunteerID: vID,
-        meetID: mID,
-        roleID: rID,
-        timestamp: Date.now(),
-        nonce: Math.random().toString(36).slice(2)
-    };
-    currentQRData = payload;
-
-    const qrContainer = $('#qr-code-container');
-    qrContainer.innerHTML = '';               // clear previous code
-
-    // ❶ stringify the payload  ❷ width option  ❸ callback adds canvas
-    QRCode.toCanvas(
-        JSON.stringify(payload),               // *** FIXED ***
-        { width: 240 },
-        (err, canvas) => {
-            if (err) {
-                alert('Error generating QR: ' + err);
-                return;
-            }
-            qrContainer.appendChild(canvas);
-            $('#download-qr').style.display = 'inline-block';
-        }
-    );
+  );
 }
+
 
 $('#download-qr').addEventListener('click', () => {
     if (!currentQRData) return;
