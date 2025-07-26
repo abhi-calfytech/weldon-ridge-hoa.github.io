@@ -351,8 +351,13 @@ function generateIndividualQR() {
     const vID = $('#qr-volunteer').value;
     const mID = $('#qr-meet').value;
     const rID = $('#qr-role').value;
-    if (!vID || !mID || !rID) return alert('Please select volunteer, meet, and role');
 
+    if (!vID || !mID || !rID) {
+        alert('Please select volunteer, meet, and role');
+        return;
+    }
+
+    // Build unique payload
     const payload = {
         volunteerID: vID,
         meetID: mID,
@@ -361,13 +366,23 @@ function generateIndividualQR() {
         nonce: Math.random().toString(36).slice(2)
     };
     currentQRData = payload;
+
     const qrContainer = $('#qr-code-container');
-    qrContainer.innerHTML = '';
-    QRCode.toCanvas(payload, { width: 240 }, (err, canvas) => {
-        if (err) return alert('Error generating QR');
-        qrContainer.appendChild(canvas);
-        $('#download-qr').style.display = 'inline-block';
-    });
+    qrContainer.innerHTML = '';               // clear previous code
+
+    // ❶ stringify the payload  ❷ width option  ❸ callback adds canvas
+    QRCode.toCanvas(
+        JSON.stringify(payload),               // *** FIXED ***
+        { width: 240 },
+        (err, canvas) => {
+            if (err) {
+                alert('Error generating QR: ' + err);
+                return;
+            }
+            qrContainer.appendChild(canvas);
+            $('#download-qr').style.display = 'inline-block';
+        }
+    );
 }
 
 $('#download-qr').addEventListener('click', () => {
