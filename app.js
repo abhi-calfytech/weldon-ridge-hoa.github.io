@@ -1,909 +1,643 @@
-// Application State
-let appData = {
-    volunteers: [],
-    meets: [],
-    positions: [
-        {id: "pos1", name: "Timer", needed: 6, description: "Time swimmers in designated lanes"},
-        {id: "pos2", name: "Head Timer", needed: 1, description: "Supervise timing operations"},
-        {id: "pos3", name: "Clerk of Course", needed: 2, description: "Manage swimmer check-in and organization"},
-        {id: "pos4", name: "Announcer", needed: 1, description: "Provide meet commentary and updates"},
-        {id: "pos5", name: "Computer Operator", needed: 1, description: "Manage meet software and results"},
-        {id: "pos6", name: "Concessions Staff", needed: 4, description: "Food and beverage service"},
-        {id: "pos7", name: "Setup Crew", needed: 3, description: "Equipment setup before meet"},
-        {id: "pos8", name: "Cleanup Crew", needed: 3, description: "Equipment cleanup after meet"},
-        {id: "pos9", name: "Awards/Ribbons", needed: 2, description: "Results processing and distribution"}
-    ],
-    assignments: [],
-    checkIns: [],
-    portalPeople: []
-};
+// HOA Volunteer Management System JavaScript
 
-let qrScanner = null;
-let scannerActive = false;
+// Global variables
+let volunteers = [];
+let meets = [];
+let portalMembers = [];
+let checkins = [];
+let html5QrCode = null;
 
-// Initialize Application
+// Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing app...');
+    console.log('HOA Volunteer Management System initialized');
+
+    // Clear any existing data and start fresh
+    clearAllData();
+
+    // Load data from localStorage
     loadData();
-    initializeNavigation();
-    initializeForms();
+
+    // Update dashboard
     updateDashboard();
-    updateAllViews();
-    
-    // Set dashboard as active by default
-    showSection('dashboard');
+
+    // Set up form event listeners
+    setupEventListeners();
+
+    // Set up navigation
+    setupNavigation();
+
+    // Update dropdowns
+    updateDropdowns();
 });
 
-// Data Management
-function saveData() {
-    localStorage.setItem('hoaVolunteerData', JSON.stringify(appData));
+// Clear all data for fresh start
+function clearAllData() {
+    localStorage.removeItem('hoa_volunteers');
+    localStorage.removeItem('hoa_meets');
+    localStorage.removeItem('hoa_portal_members');
+    localStorage.removeItem('hoa_checkins');
+
+    volunteers = [];
+    meets = [];
+    portalMembers = [];
+    checkins = [];
 }
 
+// Load data from localStorage
 function loadData() {
-    const saved = localStorage.getItem('hoaVolunteerData');
-    if (saved) {
-        const parsedData = JSON.parse(saved);
-        // Ensure all arrays exist
-        appData = {
-            volunteers: parsedData.volunteers || [],
-            meets: parsedData.meets || [],
-            positions: appData.positions, // Keep default positions
-            assignments: parsedData.assignments || [],
-            checkIns: parsedData.checkIns || [],
-            portalPeople: parsedData.portalPeople || []
-        };
-    }
+    volunteers = JSON.parse(localStorage.getItem('hoa_volunteers')) || [];
+    meets = JSON.parse(localStorage.getItem('hoa_meets')) || [];
+    portalMembers = JSON.parse(localStorage.getItem('hoa_portal_members')) || [];
+    checkins = JSON.parse(localStorage.getItem('hoa_checkins')) || [];
 }
 
-function generateId() {
-    return 'id_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+// Save data to localStorage
+function saveData() {
+    localStorage.setItem('hoa_volunteers', JSON.stringify(volunteers));
+    localStorage.setItem('hoa_meets', JSON.stringify(meets));
+    localStorage.setItem('hoa_portal_members', JSON.stringify(portalMembers));
+    localStorage.setItem('hoa_checkins', JSON.stringify(checkins));
 }
 
-// Navigation
-function initializeNavigation() {
-    console.log('Initializing navigation...');
-    const navItems = document.querySelectorAll('.nav-item[data-section]');
-    console.log('Found nav items:', navItems.length);
-    
-    navItems.forEach(item => {
-        const section = item.getAttribute('data-section');
-        console.log('Adding listener for section:', section);
-        
-        item.addEventListener('click', function(e) {
+// Set up navigation system
+function setupNavigation() {
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
             e.preventDefault();
-            console.log('Nav item clicked:', section);
-            showSection(section);
-            
-            // Update active nav item
-            navItems.forEach(nav => nav.classList.remove('active'));
+            const sectionId = this.getAttribute('data-section');
+            showSection(sectionId);
+
+            // Update active nav link
+            navLinks.forEach(nl => nl.classList.remove('active'));
             this.classList.add('active');
         });
     });
-    
-    // Set dashboard as active initially
-    const dashboardNav = document.querySelector('.nav-item[data-section="dashboard"]');
-    if (dashboardNav) {
-        dashboardNav.classList.add('active');
-    }
 }
 
-function showSection(sectionName) {
-    console.log('Showing section:', sectionName);
+// Show section function
+function showSection(sectionId) {
+    console.log('Showing section:', sectionId);
+
+    // Hide all sections
     const sections = document.querySelectorAll('.section');
     sections.forEach(section => {
         section.classList.remove('active');
     });
-    
-    const targetSection = document.getElementById(sectionName);
+
+    // Show selected section
+    const targetSection = document.getElementById(sectionId);
     if (targetSection) {
         targetSection.classList.add('active');
-        console.log('Section activated:', sectionName);
-    } else {
-        console.error('Section not found:', sectionName);
     }
-    
-    // Update views when switching sections
-    if (sectionName === 'qr-codes') {
-        renderQRCodes();
-    } else if (sectionName === 'scanner') {
-        initializeScanner();
-    } else if (sectionName === 'portal') {
-        renderPortalPeople();
-        renderPortalAssignments();
-    } else if (sectionName === 'meets') {
-        renderMeets();
-    } else if (sectionName === 'volunteers') {
-        renderVolunteers();
+
+    // Update dropdowns when showing QR generator
+    if (sectionId === 'qr-generator') {
+        updateDropdowns();
     }
 }
 
-// Forms Initialization
-function initializeForms() {
-    console.log('Initializing forms...');
-    
-    // Meet Form
-    const meetForm = document.getElementById('meet-form');
-    if (meetForm) {
-        meetForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            addMeet();
-        });
-    }
-    
-    // Volunteer Form
-    const volunteerForm = document.getElementById('volunteer-form');
-    if (volunteerForm) {
-        volunteerForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            addVolunteer();
-        });
-    }
-    
-    // Person Form (Portal)
-    const personForm = document.getElementById('person-form');
-    if (personForm) {
-        personForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            addPerson();
-        });
-    }
-    
-    // Assignment Form
-    const assignmentForm = document.getElementById('assignment-form');
-    if (assignmentForm) {
-        assignmentForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            assignVolunteer();
-        });
-    }
+// Set up event listeners
+function setupEventListeners() {
+    // Add volunteer form
+    document.getElementById('add-volunteer-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addVolunteer();
+    });
+
+    // Add meet form
+    document.getElementById('add-meet-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addMeet();
+    });
+
+    // Add portal member form
+    document.getElementById('add-portal-member-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addPortalMember();
+    });
+
+    // QR Generator
+    document.getElementById('generate-qr-btn').addEventListener('click', generateQRCode);
+    document.getElementById('download-qr-btn').addEventListener('click', downloadQRCode);
+
+    // Scanner
+    document.getElementById('start-scanner-btn').addEventListener('click', startScanner);
+    document.getElementById('stop-scanner-btn').addEventListener('click', stopScanner);
 }
 
-// Meet Management
-function showAddMeetForm() {
-    console.log('Showing add meet form...');
-    const form = document.getElementById('add-meet-form');
-    if (form) {
-        form.classList.remove('hidden');
-    }
-}
+// Add volunteer function
+function addVolunteer() {
+    const firstName = document.getElementById('volunteer-first-name').value.trim();
+    const lastName = document.getElementById('volunteer-last-name').value.trim();
+    const email = document.getElementById('volunteer-email').value.trim();
+    const phone = document.getElementById('volunteer-phone').value.trim();
+    const experience = document.getElementById('volunteer-experience').value;
 
-function hideAddMeetForm() {
-    const form = document.getElementById('add-meet-form');
-    if (form) {
-        form.classList.add('hidden');
-    }
-    const meetForm = document.getElementById('meet-form');
-    if (meetForm) {
-        meetForm.reset();
-    }
-}
-
-function addMeet() {
-    const meet = {
-        id: generateId(),
-        name: document.getElementById('meet-name').value,
-        date: document.getElementById('meet-date').value,
-        time: document.getElementById('meet-time').value,
-        location: document.getElementById('meet-location').value,
-        description: document.getElementById('meet-description').value,
-        createdAt: new Date().toISOString()
-    };
-    
-    appData.meets.push(meet);
-    saveData();
-    updateAllViews();
-    hideAddMeetForm();
-    showNotification('Meet added successfully!', 'success');
-}
-
-function deleteMeet(meetId) {
-    if (confirm('Are you sure you want to delete this meet? This will also remove all related assignments.')) {
-        appData.meets = appData.meets.filter(meet => meet.id !== meetId);
-        appData.assignments = appData.assignments.filter(assignment => assignment.meetId !== meetId);
-        appData.checkIns = appData.checkIns.filter(checkIn => checkIn.meetId !== meetId);
-        saveData();
-        updateAllViews();
-        showNotification('Meet deleted successfully!', 'success');
-    }
-}
-
-function renderMeets() {
-    const container = document.getElementById('meets-list');
-    if (!container) return;
-    
-    if (appData.meets.length === 0) {
-        container.innerHTML = '<p class="no-data">No meets scheduled. Click "Add New Meet" to get started.</p>';
+    if (!firstName || !lastName || !email || !experience) {
+        alert('Please fill in all required fields');
         return;
     }
-    
-    container.innerHTML = appData.meets.map(meet => `
-        <div class="meet-item">
-            <div class="meet-item-header">
-                <div>
-                    <h3 class="meet-item-title">${meet.name}</h3>
-                    <p class="meet-item-date">${formatDate(meet.date)} at ${meet.time}</p>
-                    <p class="meet-item-location">${meet.location}</p>
-                    ${meet.description ? `<p class="meet-item-description">${meet.description}</p>` : ''}
+
+    const volunteer = {
+        id: Date.now().toString(),
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phone: phone,
+        experience: experience,
+        dateAdded: new Date().toISOString()
+    };
+
+    volunteers.push(volunteer);
+    saveData();
+
+    // Clear form
+    document.getElementById('add-volunteer-form').reset();
+
+    // Update displays
+    updateVolunteersList();
+    updateDashboard();
+    updateDropdowns();
+
+    showAlert('Volunteer added successfully!', 'success');
+}
+
+// Add meet function
+function addMeet() {
+    const name = document.getElementById('meet-name').value.trim();
+    const date = document.getElementById('meet-date').value;
+    const time = document.getElementById('meet-time').value;
+    const location = document.getElementById('meet-location').value.trim();
+    const description = document.getElementById('meet-description').value.trim();
+
+    if (!name || !date || !time || !location) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    const meet = {
+        id: Date.now().toString(),
+        name: name,
+        date: date,
+        time: time,
+        location: location,
+        description: description,
+        dateAdded: new Date().toISOString()
+    };
+
+    meets.push(meet);
+    saveData();
+
+    // Clear form
+    document.getElementById('add-meet-form').reset();
+
+    // Update displays
+    updateMeetsList();
+    updateDashboard();
+    updateDropdowns();
+
+    showAlert('Meet added successfully!', 'success');
+}
+
+// Add portal member function
+function addPortalMember() {
+    const firstName = document.getElementById('portal-first-name').value.trim();
+    const lastName = document.getElementById('portal-last-name').value.trim();
+    const email = document.getElementById('portal-email').value.trim();
+
+    if (!firstName || !lastName || !email) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    const member = {
+        id: Date.now().toString(),
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        dateAdded: new Date().toISOString()
+    };
+
+    portalMembers.push(member);
+    saveData();
+
+    // Clear form
+    document.getElementById('add-portal-member-form').reset();
+
+    // Update displays
+    updatePortalMembersList();
+    updateDashboard();
+
+    showAlert('Portal member added successfully!', 'success');
+}
+
+// Update volunteers list
+function updateVolunteersList() {
+    const volunteersList = document.getElementById('volunteers-list');
+
+    if (volunteers.length === 0) {
+        volunteersList.innerHTML = '<p class="text-muted">No volunteers registered yet</p>';
+        return;
+    }
+
+    let html = '';
+    volunteers.forEach(volunteer => {
+        html += `
+            <div class="volunteer-item">
+                <div class="item-header">${volunteer.firstName} ${volunteer.lastName}</div>
+                <div class="item-details">
+                    <div>Email: ${volunteer.email}</div>
+                    <div>Phone: ${volunteer.phone || 'Not provided'}</div>
+                    <div>Experience: ${volunteer.experience}</div>
                 </div>
                 <div class="item-actions">
-                    <button class="btn btn--outline btn--sm" onclick="viewMeetPositions('${meet.id}')">View Positions</button>
-                    <button class="btn btn--outline btn--sm" onclick="deleteMeet('${meet.id}')">Delete</button>
+                    <button class="btn btn-danger btn-sm" onclick="removeVolunteer('${volunteer.id}')">Remove</button>
                 </div>
-            </div>
-            <div id="positions-${meet.id}" class="positions-container" style="display: none;">
-                <div class="positions-grid">
-                    ${renderMeetPositions(meet.id)}
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function viewMeetPositions(meetId) {
-    const container = document.getElementById(`positions-${meetId}`);
-    if (!container) return;
-    
-    if (container.style.display === 'none') {
-        container.style.display = 'block';
-        container.innerHTML = `<div class="positions-grid">${renderMeetPositions(meetId)}</div>`;
-    } else {
-        container.style.display = 'none';
-    }
-}
-
-function renderMeetPositions(meetId) {
-    return appData.positions.map(position => {
-        const assignments = appData.assignments.filter(a => a.meetId === meetId && a.positionId === position.id);
-        const assignedVolunteers = assignments.map(a => {
-            const volunteer = appData.volunteers.find(v => v.id === a.volunteerId);
-            return volunteer ? `${volunteer.firstName} ${volunteer.lastName}` : 'Unknown';
-        });
-        
-        return `
-            <div class="position-item">
-                <div class="position-header">
-                    <h4 class="position-name">${position.name}</h4>
-                    <span class="position-count">${assignments.length}/${position.needed}</span>
-                </div>
-                <p class="position-description">${position.description}</p>
-                <ul class="position-volunteers">
-                    ${assignedVolunteers.length > 0 
-                        ? assignedVolunteers.map(name => `<li>${name}</li>`).join('')
-                        : '<li class="no-volunteers">No volunteers assigned</li>'
-                    }
-                </ul>
             </div>
         `;
-    }).join('');
+    });
+
+    volunteersList.innerHTML = html;
 }
 
-// Volunteer Management
-function showAddVolunteerForm() {
-    console.log('Showing add volunteer form...');
-    const form = document.getElementById('add-volunteer-form');
-    if (form) {
-        form.classList.remove('hidden');
+// Update meets list
+function updateMeetsList() {
+    const meetsList = document.getElementById('meets-list');
+
+    if (meets.length === 0) {
+        meetsList.innerHTML = '<p class="text-muted">No meets scheduled yet</p>';
+        return;
     }
+
+    let html = '';
+    meets.forEach(meet => {
+        const meetDate = new Date(meet.date);
+        const today = new Date();
+        const isUpcoming = meetDate >= today;
+        const statusClass = isUpcoming ? 'text-success' : 'text-muted';
+
+        html += `
+            <div class="meet-item">
+                <div class="item-header">${meet.name}</div>
+                <div class="item-details">
+                    <div class="${statusClass}">Date: ${meet.date} at ${meet.time}</div>
+                    <div>Location: ${meet.location}</div>
+                    <div>Description: ${meet.description || 'No description'}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-danger btn-sm" onclick="removeMeet('${meet.id}')">Remove</button>
+                </div>
+            </div>
+        `;
+    });
+
+    meetsList.innerHTML = html;
 }
 
-function hideAddVolunteerForm() {
-    const form = document.getElementById('add-volunteer-form');
-    if (form) {
-        form.classList.add('hidden');
+// Update portal members list
+function updatePortalMembersList() {
+    const portalMembersList = document.getElementById('portal-members-list');
+
+    if (portalMembers.length === 0) {
+        portalMembersList.innerHTML = '<p class="text-muted">No portal members added yet</p>';
+        return;
     }
-    const volunteerForm = document.getElementById('volunteer-form');
-    if (volunteerForm) {
-        volunteerForm.reset();
-    }
+
+    let html = '';
+    portalMembers.forEach(member => {
+        html += `
+            <div class="portal-member-item">
+                <div class="item-header">${member.firstName} ${member.lastName}</div>
+                <div class="item-details">
+                    <div>Email: ${member.email}</div>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-danger btn-sm" onclick="removePortalMember('${member.id}')">Remove</button>
+                </div>
+            </div>
+        `;
+    });
+
+    portalMembersList.innerHTML = html;
 }
 
-function addVolunteer() {
-    const volunteer = {
-        id: generateId(),
-        firstName: document.getElementById('volunteer-first-name').value,
-        lastName: document.getElementById('volunteer-last-name').value,
-        email: document.getElementById('volunteer-email').value,
-        phone: document.getElementById('volunteer-phone').value || '',
-        createdAt: new Date().toISOString()
-    };
-    
-    appData.volunteers.push(volunteer);
-    saveData();
-    updateAllViews();
-    hideAddVolunteerForm();
-    showNotification('Volunteer added successfully!', 'success');
-}
-
-function deleteVolunteer(volunteerId) {
-    if (confirm('Are you sure you want to delete this volunteer? This will also remove all their assignments.')) {
-        appData.volunteers = appData.volunteers.filter(volunteer => volunteer.id !== volunteerId);
-        appData.assignments = appData.assignments.filter(assignment => assignment.volunteerId !== volunteerId);
-        appData.checkIns = appData.checkIns.filter(checkIn => checkIn.volunteerId !== volunteerId);
+// Remove functions
+function removeVolunteer(id) {
+    if (confirm('Are you sure you want to remove this volunteer?')) {
+        volunteers = volunteers.filter(v => v.id !== id);
         saveData();
-        updateAllViews();
-        showNotification('Volunteer deleted successfully!', 'success');
+        updateVolunteersList();
+        updateDashboard();
+        updateDropdowns();
     }
 }
 
-function showAssignmentModal(volunteerId) {
-    document.getElementById('assignment-volunteer-id').value = volunteerId;
-    
-    // Populate meets dropdown
-    const meetSelect = document.getElementById('assignment-meet');
-    meetSelect.innerHTML = '<option value="">Select a meet</option>' + 
-        appData.meets.map(meet => `<option value="${meet.id}">${meet.name} - ${formatDate(meet.date)}</option>`).join('');
-    
-    // Populate positions dropdown
-    const positionSelect = document.getElementById('assignment-position');
-    positionSelect.innerHTML = '<option value="">Select a position</option>' + 
-        appData.positions.map(position => `<option value="${position.id}">${position.name}</option>`).join('');
-    
-    document.getElementById('assignment-modal').classList.remove('hidden');
-}
-
-function hideAssignmentModal() {
-    document.getElementById('assignment-modal').classList.add('hidden');
-    const form = document.getElementById('assignment-form');
-    if (form) {
-        form.reset();
+function removeMeet(id) {
+    if (confirm('Are you sure you want to remove this meet?')) {
+        meets = meets.filter(m => m.id !== id);
+        saveData();
+        updateMeetsList();
+        updateDashboard();
+        updateDropdowns();
     }
 }
 
-function assignVolunteer() {
-    const volunteerId = document.getElementById('assignment-volunteer-id').value;
-    const meetId = document.getElementById('assignment-meet').value;
-    const positionId = document.getElementById('assignment-position').value;
-    
-    // Check if assignment already exists
-    const existingAssignment = appData.assignments.find(a => 
-        a.volunteerId === volunteerId && a.meetId === meetId && a.positionId === positionId
-    );
-    
-    if (existingAssignment) {
-        showNotification('This volunteer is already assigned to this position for this meet.', 'error');
+function removePortalMember(id) {
+    if (confirm('Are you sure you want to remove this portal member?')) {
+        portalMembers = portalMembers.filter(m => m.id !== id);
+        saveData();
+        updatePortalMembersList();
+        updateDashboard();
+    }
+}
+
+// Update dashboard
+function updateDashboard() {
+    // Update stats
+    document.getElementById('total-volunteers').textContent = volunteers.length;
+    document.getElementById('total-meets').textContent = meets.length;
+    document.getElementById('total-checkins').textContent = checkins.length;
+    document.getElementById('open-positions').textContent = calculateOpenPositions();
+
+    // Update upcoming meets
+    updateUpcomingMeets();
+
+    // Update recent checkins
+    updateRecentCheckins();
+}
+
+function calculateOpenPositions() {
+    // Standard positions per meet
+    const positionsPerMeet = 10; // Timer, Head Timer, Clerk, Announcer, etc.
+    const totalPositions = meets.length * positionsPerMeet;
+    const filledPositions = checkins.length;
+    return Math.max(0, totalPositions - filledPositions);
+}
+
+function updateUpcomingMeets() {
+    const upcomingMeetsDiv = document.getElementById('upcoming-meets');
+    const today = new Date();
+
+    const upcomingMeets = meets.filter(meet => new Date(meet.date) >= today)
+                              .sort((a, b) => new Date(a.date) - new Date(b.date))
+                              .slice(0, 3);
+
+    if (upcomingMeets.length === 0) {
+        upcomingMeetsDiv.innerHTML = '<p class="text-muted">No upcoming meets scheduled</p>';
         return;
     }
-    
-    const assignment = {
-        id: generateId(),
-        volunteerId,
-        meetId,
-        positionId,
-        createdAt: new Date().toISOString()
-    };
-    
-    appData.assignments.push(assignment);
-    saveData();
-    updateAllViews();
-    hideAssignmentModal();
-    showNotification('Volunteer assigned successfully!', 'success');
-}
 
-function renderVolunteers() {
-    const container = document.getElementById('volunteers-list');
-    if (!container) return;
-    
-    if (appData.volunteers.length === 0) {
-        container.innerHTML = '<p class="no-data">No volunteers registered. Click "Add New Volunteer" to get started.</p>';
-        return;
-    }
-    
-    container.innerHTML = appData.volunteers.map(volunteer => {
-        const assignments = appData.assignments.filter(a => a.volunteerId === volunteer.id);
-        return `
-            <div class="volunteer-item">
-                <div class="volunteer-item-header">
-                    <div>
-                        <h3 class="volunteer-item-name">${volunteer.firstName} ${volunteer.lastName}</h3>
-                        <p class="volunteer-item-email">${volunteer.email}</p>
-                        ${volunteer.phone ? `<p class="volunteer-item-phone">${volunteer.phone}</p>` : ''}
-                        <p class="volunteer-assignments">${assignments.length} assignment(s)</p>
-                    </div>
-                    <div class="item-actions">
-                        <button class="btn btn--primary btn--sm" onclick="showAssignmentModal('${volunteer.id}')">Assign</button>
-                        <button class="btn btn--outline btn--sm" onclick="deleteVolunteer('${volunteer.id}')">Delete</button>
-                    </div>
-                </div>
+    let html = '';
+    upcomingMeets.forEach(meet => {
+        html += `
+            <div class="mb-2">
+                <strong>${meet.name}</strong><br>
+                <small class="text-muted">${meet.date} at ${meet.time}</small>
             </div>
         `;
-    }).join('');
+    });
+
+    upcomingMeetsDiv.innerHTML = html;
 }
 
-// QR Code Management
-function generateAllQRCodes() {
-    renderQRCodes();
-    showNotification('QR codes generated successfully!', 'success');
-}
+function updateRecentCheckins() {
+    const recentCheckinsDiv = document.getElementById('recent-checkins');
 
-function renderQRCodes() {
-    const container = document.getElementById('qr-codes-grid');
-    if (!container) return;
-    
-    if (appData.assignments.length === 0) {
-        container.innerHTML = '<p class="no-data">No QR codes generated. Assign volunteers to meets first, then click "Generate QR Codes".</p>';
+    if (checkins.length === 0) {
+        recentCheckinsDiv.innerHTML = '<p class="text-muted">No recent check-ins</p>';
         return;
     }
-    
-    container.innerHTML = appData.assignments.map(assignment => {
-        const volunteer = appData.volunteers.find(v => v.id === assignment.volunteerId);
-        const meet = appData.meets.find(m => m.id === assignment.meetId);
-        const position = appData.positions.find(p => p.id === assignment.positionId);
-        
-        if (!volunteer || !meet || !position) return '';
-        
-        return `
-            <div class="qr-item">
-                <div class="qr-code-container">
-                    <canvas class="qr-code" id="qr-${assignment.id}"></canvas>
+
+    const recentCheckins = checkins.slice(-5).reverse();
+
+    let html = '';
+    recentCheckins.forEach(checkin => {
+        const volunteer = volunteers.find(v => v.id === checkin.volunteerId);
+        const meet = meets.find(m => m.id === checkin.meetId);
+
+        if (volunteer && meet) {
+            html += `
+                <div class="mb-2">
+                    <strong>${volunteer.firstName} ${volunteer.lastName}</strong><br>
+                    <small class="text-muted">${meet.name} - ${checkin.position}</small>
                 </div>
-                <div class="qr-info">
-                    <h4>${volunteer.firstName} ${volunteer.lastName}</h4>
-                    <p>${meet.name}</p>
-                    <p>${position.name}</p>
-                    <p>${formatDate(meet.date)} at ${meet.time}</p>
-                </div>
-            </div>
-        `;
-    }).filter(html => html !== '').join('');
-    
-    // Generate QR codes after DOM update
-    setTimeout(() => {
-        appData.assignments.forEach(assignment => {
-            const canvas = document.getElementById(`qr-${assignment.id}`);
-            if (canvas && typeof QRCode !== 'undefined') {
-                const qrData = {
-                    assignmentId: assignment.id,
-                    volunteerId: assignment.volunteerId,
-                    meetId: assignment.meetId, 
-                    positionId: assignment.positionId,
-                    timestamp: new Date().toISOString()
-                };
-                
-                QRCode.toCanvas(canvas, JSON.stringify(qrData), {
-                    width: 150,
-                    margin: 1,
-                    color: {
-                        dark: '#134252',
-                        light: '#FFFFFF'
-                    }
-                }).catch(err => console.error('QR Code generation error:', err));
-            }
-        });
-    }, 100);
-}
-
-function printQRCodes() {
-    window.print();
-}
-
-// QR Scanner
-function initializeScanner() {
-    const startBtn = document.getElementById('start-scan');
-    const stopBtn = document.getElementById('stop-scan');
-    
-    if (startBtn && !startBtn.hasAttribute('data-listener-added')) {
-        startBtn.addEventListener('click', startScanner);
-        startBtn.setAttribute('data-listener-added', 'true');
-    }
-    
-    if (stopBtn && !stopBtn.hasAttribute('data-listener-added')) {
-        stopBtn.addEventListener('click', stopScanner);
-        stopBtn.setAttribute('data-listener-added', 'true');
-    }
-}
-
-function startScanner() {
-    if (scannerActive || typeof Html5Qrcode === 'undefined') {
-        if (typeof Html5Qrcode === 'undefined') {
-            showNotification('QR Scanner library not loaded', 'error');
+            `;
         }
+    });
+
+    recentCheckinsDiv.innerHTML = html || '<p class="text-muted">No recent check-ins</p>';
+}
+
+// Update dropdowns
+function updateDropdowns() {
+    // Update meet dropdown
+    const meetSelect = document.getElementById('qr-meet-select');
+    meetSelect.innerHTML = '<option value="">Choose a meet...</option>';
+    meets.forEach(meet => {
+        meetSelect.innerHTML += `<option value="${meet.id}">${meet.name} - ${meet.date}</option>`;
+    });
+
+    // Update volunteer dropdown
+    const volunteerSelect = document.getElementById('qr-volunteer-select');
+    volunteerSelect.innerHTML = '<option value="">Choose a volunteer...</option>';
+    volunteers.forEach(volunteer => {
+        volunteerSelect.innerHTML += `<option value="${volunteer.id}">${volunteer.firstName} ${volunteer.lastName}</option>`;
+    });
+}
+
+// QR Code Generation
+function generateQRCode() {
+    const meetId = document.getElementById('qr-meet-select').value;
+    const volunteerId = document.getElementById('qr-volunteer-select').value;
+    const position = document.getElementById('qr-position-select').value;
+
+    if (!meetId || !volunteerId || !position) {
+        alert('Please select meet, volunteer, and position');
         return;
     }
-    
-    qrScanner = new Html5Qrcode("qr-reader");
-    
+
+    const qrData = {
+        meetId: meetId,
+        volunteerId: volunteerId,
+        position: position,
+        timestamp: new Date().toISOString()
+    };
+
+    const qrString = JSON.stringify(qrData);
+    const qrDisplay = document.getElementById('qr-code-display');
+
+    // Clear previous QR code
+    qrDisplay.innerHTML = '';
+
+    // Generate QR code
+    QRCode.toCanvas(qrString, { width: 200, height: 200 }, function (error, canvas) {
+        if (error) {
+            console.error(error);
+            qrDisplay.innerHTML = '<p class="text-danger">Error generating QR code</p>';
+            return;
+        }
+
+        qrDisplay.appendChild(canvas);
+        document.getElementById('download-qr-btn').style.display = 'block';
+
+        // Store canvas for download
+        window.currentQRCanvas = canvas;
+    });
+}
+
+// Download QR Code
+function downloadQRCode() {
+    if (window.currentQRCanvas) {
+        const link = document.createElement('a');
+        link.download = 'volunteer-qr-code.png';
+        link.href = window.currentQRCanvas.toDataURL();
+        link.click();
+    }
+}
+
+// Scanner functions
+function startScanner() {
+    const qrReader = document.getElementById('qr-reader');
+
+    if (html5QrCode) {
+        console.log('Scanner already running');
+        return;
+    }
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+
     const config = {
         fps: 10,
         qrbox: { width: 250, height: 250 }
     };
-    
-    Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) {
-            const cameraId = devices[0].id;
-            
-            qrScanner.start(cameraId, config, (decodedText, decodedResult) => {
-                processQRScan(decodedText);
-            })
-            .then(() => {
-                scannerActive = true;
-                document.getElementById('start-scan').style.display = 'none';
-                document.getElementById('stop-scan').style.display = 'inline-block';
-            })
-            .catch(err => {
-                console.error('Error starting scanner:', err);
-                showNotification('Error starting camera. Please check permissions.', 'error');
-            });
-        } else {
-            showNotification('No cameras found on this device.', 'error');
-        }
-    }).catch(err => {
-        console.error('Error getting cameras:', err);
-        showNotification('Error accessing cameras.', 'error');
+
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanError
+    ).then(() => {
+        document.getElementById('start-scanner-btn').style.display = 'none';
+        document.getElementById('stop-scanner-btn').style.display = 'inline-block';
+    }).catch(error => {
+        console.error('Error starting scanner:', error);
+        alert('Error starting scanner. Please check camera permissions.');
     });
 }
 
 function stopScanner() {
-    if (qrScanner && scannerActive) {
-        qrScanner.stop().then(() => {
-            scannerActive = false;
-            document.getElementById('start-scan').style.display = 'inline-block';
-            document.getElementById('stop-scan').style.display = 'none';
-        }).catch(err => {
-            console.error('Error stopping scanner:', err);
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode = null;
+            document.getElementById('start-scanner-btn').style.display = 'inline-block';
+            document.getElementById('stop-scanner-btn').style.display = 'none';
+            document.getElementById('qr-reader').innerHTML = '<p class="text-muted">Click "Start Scanner" to begin scanning</p>';
+        }).catch(error => {
+            console.error('Error stopping scanner:', error);
         });
     }
 }
 
-function resetScanner() {
-    document.getElementById('scan-result').classList.add('hidden');
-    if (!scannerActive) {
-        startScanner();
-    }
-}
+function onScanSuccess(decodedText, decodedResult) {
+    console.log('QR Code scanned:', decodedText);
 
-function processQRScan(qrData) {
     try {
-        const data = JSON.parse(qrData);
-        
-        // Validate QR data structure
-        if (!data.assignmentId || !data.volunteerId || !data.meetId || !data.positionId) {
-            throw new Error('Invalid QR code format');
-        }
-        
-        // Find assignment
-        const assignment = appData.assignments.find(a => a.id === data.assignmentId);
-        if (!assignment) {
-            throw new Error('Assignment not found');
-        }
-        
-        // Check if already checked in
-        const existingCheckIn = appData.checkIns.find(c => c.assignmentId === data.assignmentId);
-        if (existingCheckIn) {
-            throw new Error('Already checked in');
-        }
-        
-        // Get volunteer, meet, and position info
-        const volunteer = appData.volunteers.find(v => v.id === data.volunteerId);
-        const meet = appData.meets.find(m => m.id === data.meetId);
-        const position = appData.positions.find(p => p.id === data.positionId);
-        
-        // Create check-in record
-        const checkIn = {
-            id: generateId(),
-            assignmentId: data.assignmentId,
-            volunteerId: data.volunteerId,
-            meetId: data.meetId,
-            positionId: data.positionId,
-            checkedInAt: new Date().toISOString()
-        };
-        
-        appData.checkIns.push(checkIn);
-        saveData();
-        updateDashboard();
-        
-        // Stop scanner and show result
-        stopScanner();
-        
-        document.getElementById('scan-details').innerHTML = `
-            <p><strong>Volunteer:</strong> ${volunteer.firstName} ${volunteer.lastName}</p>
-            <p><strong>Meet:</strong> ${meet.name}</p>
-            <p><strong>Position:</strong> ${position.name}</p>
-            <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-        `;
-        
-        document.getElementById('scan-result').classList.remove('hidden');
-        showNotification('Check-in successful!', 'success');
-        
+        const qrData = JSON.parse(decodedText);
+        processCheckin(qrData);
     } catch (error) {
-        showNotification(`Scan Error: ${error.message}`, 'error');
+        console.error('Invalid QR code format:', error);
+        displayScanResult('Invalid QR code format', 'error');
     }
 }
 
-// Portal Management
-function showAddPersonForm() {
-    console.log('Showing add person form...');
-    const form = document.getElementById('add-person-form');
-    if (form) {
-        form.classList.remove('hidden');
-    }
+function onScanError(error) {
+    // Ignore scan errors (they happen frequently during scanning)
+    console.log('Scan error (normal):', error);
 }
 
-function hideAddPersonForm() {
-    const form = document.getElementById('add-person-form');
-    if (form) {
-        form.classList.add('hidden');
-    }
-    const personForm = document.getElementById('person-form');
-    if (personForm) {
-        personForm.reset();
-    }
-}
+function processCheckin(qrData) {
+    const { meetId, volunteerId, position } = qrData;
 
-function addPerson() {
-    const person = {
-        id: generateId(),
-        firstName: document.getElementById('person-first-name').value,
-        lastName: document.getElementById('person-last-name').value,
-        email: document.getElementById('person-email').value,
-        createdAt: new Date().toISOString()
+    // Find volunteer and meet
+    const volunteer = volunteers.find(v => v.id === volunteerId);
+    const meet = meets.find(m => m.id === meetId);
+
+    if (!volunteer || !meet) {
+        displayScanResult('Invalid volunteer or meet information', 'error');
+        return;
+    }
+
+    // Check if already checked in
+    const existingCheckin = checkins.find(c => 
+        c.volunteerId === volunteerId && 
+        c.meetId === meetId && 
+        c.position === position
+    );
+
+    if (existingCheckin) {
+        displayScanResult(`${volunteer.firstName} ${volunteer.lastName} already checked in for ${position}`, 'error');
+        return;
+    }
+
+    // Create checkin record
+    const checkin = {
+        id: Date.now().toString(),
+        volunteerId: volunteerId,
+        meetId: meetId,
+        position: position,
+        checkinTime: new Date().toISOString()
     };
-    
-    appData.portalPeople.push(person);
+
+    checkins.push(checkin);
     saveData();
-    renderPortalPeople();
-    hideAddPersonForm();
-    showNotification('Person added successfully!', 'success');
-}
-
-function deletePerson(personId) {
-    if (confirm('Are you sure you want to delete this person?')) {
-        appData.portalPeople = appData.portalPeople.filter(person => person.id !== personId);
-        saveData();
-        renderPortalPeople();
-        showNotification('Person deleted successfully!', 'success');
-    }
-}
-
-function renderPortalPeople() {
-    const container = document.getElementById('portal-people-list');
-    if (!container) return;
-    
-    if (appData.portalPeople.length === 0) {
-        container.innerHTML = '<p class="no-data">No people added. Click "Add Person" to get started.</p>';
-        return;
-    }
-    
-    container.innerHTML = appData.portalPeople.map(person => `
-        <div class="person-item">
-            <div class="person-item-header">
-                <div>
-                    <h3 class="person-item-name">${person.firstName} ${person.lastName}</h3>
-                    <p class="person-item-email">${person.email}</p>
-                </div>
-                <div class="item-actions">
-                    <button class="btn btn--outline btn--sm" onclick="deletePerson('${person.id}')">Delete</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function renderPortalAssignments() {
-    const container = document.getElementById('portal-assignments');
-    if (!container) return;
-    
-    if (appData.assignments.length === 0) {
-        container.innerHTML = '<p class="no-data">No assignments found.</p>';
-        return;
-    }
-    
-    // For now, show all assignments - in a real app, this would be filtered by user
-    const assignmentHtml = appData.assignments.map(assignment => {
-        const volunteer = appData.volunteers.find(v => v.id === assignment.volunteerId);
-        const meet = appData.meets.find(m => m.id === assignment.meetId);
-        const position = appData.positions.find(p => p.id === assignment.positionId);
-        const checkIn = appData.checkIns.find(c => c.assignmentId === assignment.id);
-        
-        if (!volunteer || !meet || !position) return '';
-        
-        return `
-            <div class="assignment-item card">
-                <div class="card__body">
-                    <h4>${volunteer.firstName} ${volunteer.lastName}</h4>
-                    <p><strong>Meet:</strong> ${meet.name}</p>
-                    <p><strong>Position:</strong> ${position.name}</p>
-                    <p><strong>Date:</strong> ${formatDate(meet.date)} at ${meet.time}</p>
-                    <p><strong>Status:</strong> ${checkIn ? 
-                        `<span class="status status--success">Checked In</span>` : 
-                        `<span class="status status--info">Not Checked In</span>`
-                    }</p>
-                </div>
-            </div>
-        `;
-    }).filter(html => html !== '').join('');
-    
-    container.innerHTML = assignmentHtml || '<p class="no-data">No assignments found.</p>';
-}
-
-// Dashboard Updates
-function updateDashboard() {
-    const totalVolunteersEl = document.getElementById('total-volunteers');
-    const upcomingMeetsEl = document.getElementById('upcoming-meets');
-    const positionsFilledEl = document.getElementById('positions-filled');
-    const totalCheckinsEl = document.getElementById('total-checkins');
-    
-    if (totalVolunteersEl) totalVolunteersEl.textContent = appData.volunteers.length;
-    if (upcomingMeetsEl) upcomingMeetsEl.textContent = appData.meets.length;
-    
-    if (positionsFilledEl) {
-        const totalPositionsNeeded = appData.meets.length * appData.positions.reduce((sum, pos) => sum + pos.needed, 0);
-        const totalAssignments = appData.assignments.length;
-        positionsFilledEl.textContent = `${totalAssignments}/${totalPositionsNeeded}`;
-    }
-    
-    if (totalCheckinsEl) totalCheckinsEl.textContent = appData.checkIns.length;
-    
-    updateActivityFeed();
-}
-
-function updateActivityFeed() {
-    const container = document.getElementById('activity-list');
-    if (!container) return;
-    
-    const activities = [];
-    
-    // Add recent check-ins
-    appData.checkIns.slice(-5).reverse().forEach(checkIn => {
-        const volunteer = appData.volunteers.find(v => v.id === checkIn.volunteerId);
-        if (volunteer) {
-            activities.push({
-                text: `${volunteer.firstName} ${volunteer.lastName} checked in`,
-                time: checkIn.checkedInAt,
-                type: 'checkin'
-            });
-        }
-    });
-    
-    // Add recent assignments
-    appData.assignments.slice(-3).reverse().forEach(assignment => {
-        const volunteer = appData.volunteers.find(v => v.id === assignment.volunteerId);
-        const meet = appData.meets.find(m => m.id === assignment.meetId);
-        if (volunteer && meet) {
-            activities.push({
-                text: `${volunteer.firstName} ${volunteer.lastName} assigned to ${meet.name}`,
-                time: assignment.createdAt,
-                type: 'assignment'
-            });
-        }
-    });
-    
-    if (activities.length === 0) {
-        container.innerHTML = '<p class="no-data">No recent activity</p>';
-        return;
-    }
-    
-    // Sort by time and take most recent
-    activities.sort((a, b) => new Date(b.time) - new Date(a.time));
-    
-    container.innerHTML = activities.slice(0, 5).map(activity => `
-        <div class="activity-item">
-            <p>${activity.text}</p>
-            <small>${formatDateTime(activity.time)}</small>
-        </div>
-    `).join('');
-}
-
-function updateAllViews() {
     updateDashboard();
-    renderMeets();
-    renderVolunteers();
-    renderQRCodes();
-    renderPortalPeople();
-    renderPortalAssignments();
+
+    displayScanResult(`✅ ${volunteer.firstName} ${volunteer.lastName} checked in successfully for ${position} at ${meet.name}`, 'success');
+
+    // Stop scanner after successful scan
+    setTimeout(stopScanner, 2000);
 }
 
-// Data Export
-function exportData() {
-    const csvData = [];
-    
-    // Headers
-    csvData.push(['Type', 'Name', 'Email', 'Meet', 'Position', 'Date', 'Status']);
-    
-    // Add volunteer data
-    appData.assignments.forEach(assignment => {
-        const volunteer = appData.volunteers.find(v => v.id === assignment.volunteerId);
-        const meet = appData.meets.find(m => m.id === assignment.meetId);
-        const position = appData.positions.find(p => p.id === assignment.positionId);
-        const checkIn = appData.checkIns.find(c => c.assignmentId === assignment.id);
-        
-        if (volunteer && meet && position) {
-            csvData.push([
-                'Assignment',
-                `${volunteer.firstName} ${volunteer.lastName}`,
-                volunteer.email,
-                meet.name,
-                position.name,
-                meet.date,
-                checkIn ? 'Checked In' : 'Not Checked In'
-            ]);
-        }
-    });
-    
-    // Convert to CSV string
-    const csvString = csvData.map(row => 
-        row.map(cell => `"${cell}"`).join(',')
-    ).join('\n');
-    
-    // Download file
-    const blob = new Blob([csvString], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `hoa-volunteer-data-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    showNotification('Data exported successfully!', 'success');
+function displayScanResult(message, type) {
+    const scanResult = document.getElementById('scan-result');
+    const className = type === 'success' ? 'scan-success' : 'scan-error';
+
+    scanResult.innerHTML = `<div class="${className}">${message}</div>`;
 }
 
-// Utility Functions
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString();
-}
-
-function formatDateTime(dateString) {
-    return new Date(dateString).toLocaleString();
-}
-
-function showNotification(message, type = 'info') {
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `notification status status--${type}`;
-    notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 10000;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-weight: 500;
-        animation: slideIn 0.3s ease;
+// Show alert function
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
-    document.body.appendChild(notification);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
+
+    // Insert at top of current active section
+    const activeSection = document.querySelector('.section.active');
+    if (activeSection) {
+        activeSection.insertBefore(alertDiv, activeSection.firstChild);
+
+        // Auto remove after 3 seconds
         setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
             }
-        }, 300);
-    }, 3000);
+        }, 3000);
+    }
 }
 
-// Add CSS for notifications
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
+// Initialize display updates
+function initializeDisplays() {
+    updateVolunteersList();
+    updateMeetsList();
+    updatePortalMembersList();
+    updateDashboard();
+    updateDropdowns();
+}
 
-// Make functions globally available for onclick handlers
-window.showSection = showSection;
-window.showAddMeetForm = showAddMeetForm;
-window.hideAddMeetForm = hideAddMeetForm;
-window.showAddVolunteerForm = showAddVolunteerForm;
-window.hideAddVolunteerForm = hideAddVolunteerForm;
-window.showAddPersonForm = showAddPersonForm;
-window.hideAddPersonForm = hideAddPersonForm;
-window.showAssignmentModal = showAssignmentModal;
-window.hideAssignmentModal = hideAssignmentModal;
-window.deleteMeet = deleteMeet;
-window.deleteVolunteer = deleteVolunteer;
-window.deletePerson = deletePerson;
-window.viewMeetPositions = viewMeetPositions;
-window.generateAllQRCodes = generateAllQRCodes;
-window.printQRCodes = printQRCodes;
-window.resetScanner = resetScanner;
-window.exportData = exportData;
+// Call initialization when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeDisplays);
