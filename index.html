@@ -1,196 +1,399 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HOA Swim Meet Volunteer Manager</title>
-
-  <!-- Styles + libraries -->
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOA Swim Meet Volunteer Manager</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
-
 <body>
-  <div class="container">
-    <!------ HEADER & MENU ------>
-    <header>
-      <h1>🏊‍♀️ HOA Swim Meet Volunteer Manager</h1>
-      <nav>
-        <button class="nav-btn active" data-section="dashboard">📊 Dashboard</button>
-        <button class="nav-btn" data-section="volunteers">👥 Volunteers</button>
-        <button class="nav-btn" data-section="meets">📅 Meets</button>
-        <button class="nav-btn" data-section="roles">🎯 Roles</button>
-        <button class="nav-btn" data-section="qr-codes">🔳 QR Codes</button>
-        <button class="nav-btn" data-section="scanner">📱 Scanner</button>
-        <button class="nav-btn" data-section="portal">🏠 My Portal</button>
-      </nav>
-    </header>
-
-    <!------ MAIN CONTENT ------>
-    <main>
-      <!---- Dashboard ---->
-      <section id="dashboard" class="section active">
-        <h2>Dashboard Overview</h2>
-
-        <div class="stats-grid">
-          <div class="stat-card"><h3 id="total-volunteers">0</h3><p>Total Volunteers</p></div>
-          <div class="stat-card"><h3 id="total-meets">0</h3><p>Scheduled Meets</p></div>
-          <div class="stat-card"><h3 id="total-checkins">0</h3><p>Check-ins Today</p></div>
-          <div class="stat-card"><h3 id="total-roles">0</h3><p>Available Roles</p></div>
-        </div>
-
-        <div class="dashboard-content">
-          <div class="upcoming-meets"><h3>Upcoming Meets</h3><div id="upcoming-meets-list"><p class="no-data">No upcoming meets scheduled</p></div></div>
-          <div class="recent-activity"><h3>Recent Check-ins</h3><div id="recent-checkins-list"><p class="no-data">No recent check-ins</p></div></div>
-        </div>
-      </section>
-
-      <!---- Volunteers ---->
-      <section id="volunteers" class="section">
-        <h2>Volunteer Management</h2>
-
-        <div class="form-container">
-          <h3>Add New Volunteer</h3>
-          <form id="add-volunteer-form">
-            <div class="form-group"><label>First Name:<input id="volunteer-first-name" required /></label></div>
-            <div class="form-group"><label>Last Name:<input id="volunteer-last-name" required /></label></div>
-            <div class="form-group"><label>Email:<input type="email" id="volunteer-email" required /></label></div>
-            <div class="form-group"><label>Phone:<input type="tel" id="volunteer-phone" /></label></div>
-            <div class="form-group">
-              <label>Experience Level:
-                <select id="volunteer-experience">
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="experienced">Experienced</option>
-                </select>
-              </label>
+    <div class="container">
+        <!-- Header & Navigation -->
+        <header class="main-header">
+            <div class="header-content">
+                <h1><span class="pool-icon">🏊‍♀️</span> HOA Swim Meet Volunteer Manager</h1>
+                <div class="header-actions">
+                    <button id="import-btn" class="header-btn">📁 Import Data</button>
+                    <button id="clear-data-btn" class="header-btn danger">🗑️ Clear All</button>
+                </div>
             </div>
-            <button type="submit">Add Volunteer</button>
-          </form>
-        </div>
+            <nav class="main-nav">
+                <button class="nav-btn active" data-section="dashboard">📊 Dashboard</button>
+                <button class="nav-btn" data-section="volunteers">👥 Volunteers</button>
+                <button class="nav-btn" data-section="meets">📅 Meets</button>
+                <button class="nav-btn" data-section="roles">🎯 Roles</button>
+                <button class="nav-btn" data-section="qr-codes">🔳 QR Codes</button>
+                <button class="nav-btn" data-section="scanner">📱 Scanner</button>
+                <button class="nav-btn" data-section="portal">🏠 My Portal</button>
+            </nav>
+        </header>
 
-        <div class="volunteers-list">
-          <h3>Registered Volunteers</h3>
-          <div id="volunteers-container"><p class="no-data">No volunteers registered yet</p></div>
-        </div>
-      </section>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section active">
+                <div class="section-header">
+                    <h2>📊 Dashboard Overview</h2>
+                    <p class="subtitle">Overview of volunteer coordination across all swim meets</p>
+                </div>
 
-      <!---- Meets ---->
-      <section id="meets" class="section">
-        <h2>Meet Management</h2>
+                <div class="stats-grid">
+                    <div class="stat-card volunteers">
+                        <div class="stat-number" id="total-volunteers">0</div>
+                        <div class="stat-label">Total Volunteers</div>
+                        <div class="stat-icon">👥</div>
+                    </div>
+                    <div class="stat-card meets">
+                        <div class="stat-number" id="total-meets">0</div>
+                        <div class="stat-label">Upcoming Meets</div>
+                        <div class="stat-icon">📅</div>
+                    </div>
+                    <div class="stat-card checkins">
+                        <div class="stat-number" id="total-checkins">0</div>
+                        <div class="stat-label">Today's Check-ins</div>
+                        <div class="stat-icon">✅</div>
+                    </div>
+                    <div class="stat-card roles">
+                        <div class="stat-number" id="total-roles">0</div>
+                        <div class="stat-label">Available Roles</div>
+                        <div class="stat-icon">🎯</div>
+                    </div>
+                </div>
 
-        <div class="form-container">
-          <h3>Add New Meet</h3>
-          <form id="add-meet-form">
-            <div class="form-group"><label>Meet Name:<input id="meet-name" required /></label></div>
-            <div class="form-group"><label>Date:<input type="date" id="meet-date" required /></label></div>
-            <div class="form-group"><label>Time:<input type="time" id="meet-time" required /></label></div>
-            <div class="form-group"><label>Location:<input id="meet-location" required /></label></div>
-            <div class="form-group"><label>Description:<textarea id="meet-description" rows="3"></textarea></label></div>
-            <button type="submit">Add Meet</button>
-          </form>
-        </div>
+                <div class="dashboard-content">
+                    <div class="dashboard-card">
+                        <h3>Upcoming Meets</h3>
+                        <div id="upcoming-meets-list" class="content-list">
+                            <div class="no-data">No upcoming meets scheduled</div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <h3>Recent Check-ins</h3>
+                        <div id="recent-checkins-list" class="content-list">
+                            <div class="no-data">No recent check-ins</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="meets-list">
-          <h3>Scheduled Meets</h3>
-          <div id="meets-container"><p class="no-data">No meets scheduled yet</p></div>
-        </div>
-      </section>
+            <!-- Volunteers Section -->
+            <section id="volunteers" class="section">
+                <div class="section-header">
+                    <h2>👥 Volunteer Management</h2>
+                    <p class="subtitle">Register and manage HOA community volunteers</p>
+                </div>
 
-      <!---- Roles ---->
-      <section id="roles" class="section">
-        <h2>Volunteer Roles Management</h2>
+                <div class="form-card">
+                    <h3>Add New Volunteer</h3>
+                    <form id="add-volunteer-form" class="volunteer-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="volunteer-first-name">First Name</label>
+                                <input type="text" id="volunteer-first-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="volunteer-last-name">Last Name</label>
+                                <input type="text" id="volunteer-last-name" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="volunteer-email">Email Address</label>
+                                <input type="email" id="volunteer-email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="volunteer-phone">Phone Number</label>
+                                <input type="tel" id="volunteer-phone">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="volunteer-experience">Experience Level</label>
+                                <select id="volunteer-experience">
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate">Intermediate</option>
+                                    <option value="experienced">Experienced</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Volunteer</button>
+                    </form>
+                </div>
 
-        <div class="form-container">
-          <div class="button-group"><button id="load-standard-roles" class="primary-btn">Load Standard Swim Meet Roles</button></div>
+                <div class="list-card">
+                    <h3>Registered Volunteers</h3>
+                    <div id="volunteers-container" class="volunteers-grid">
+                        <div class="no-data">No volunteers registered yet</div>
+                    </div>
+                </div>
+            </section>
 
-          <h3>Add Custom Role</h3>
-          <form id="add-role-form">
-            <div class="form-group"><label>Role Name:<input id="role-name" required /></label></div>
-            <div class="form-group"><label>Description:<textarea id="role-description" rows="2"></textarea></label></div>
-            <div class="form-group"><label>Volunteers Needed:<input type="number" id="role-needed" min="1" value="1" required /></label></div>
-            <div class="form-group">
-              <label>Required Experience:
-                <select id="role-experience">
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="experienced">Experienced</option>
-                </select>
-              </label>
+            <!-- Meets Section -->
+            <section id="meets" class="section">
+                <div class="section-header">
+                    <h2>📅 Meet Management</h2>
+                    <p class="subtitle">Schedule and organize swim meets</p>
+                </div>
+
+                <div class="form-card">
+                    <h3>Add New Meet</h3>
+                    <form id="add-meet-form" class="meet-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="meet-name">Meet Name</label>
+                                <input type="text" id="meet-name" required placeholder="e.g., Opening Day Meet">
+                            </div>
+                            <div class="form-group">
+                                <label for="meet-date">Date</label>
+                                <input type="date" id="meet-date" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="meet-time">Start Time</label>
+                                <input type="time" id="meet-time" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="meet-location">Location</label>
+                                <input type="text" id="meet-location" required placeholder="e.g., HOA Community Pool">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="meet-description">Description</label>
+                            <textarea id="meet-description" rows="3" placeholder="Additional details about the meet"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Meet</button>
+                    </form>
+                </div>
+
+                <div class="list-card">
+                    <h3>Scheduled Meets</h3>
+                    <div id="meets-container" class="meets-grid">
+                        <div class="no-data">No meets scheduled yet</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Roles Section -->
+            <section id="roles" class="section">
+                <div class="section-header">
+                    <h2>🎯 Volunteer Roles</h2>
+                    <p class="subtitle">Define volunteer positions for swim meets</p>
+                </div>
+
+                <div class="form-card">
+                    <div class="quick-actions">
+                        <button id="load-standard-roles" class="btn-secondary">Load Standard Swim Meet Roles</button>
+                    </div>
+                    
+                    <h3>Add Custom Role</h3>
+                    <form id="add-role-form" class="role-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="role-name">Role Name</label>
+                                <input type="text" id="role-name" required placeholder="e.g., Timer">
+                            </div>
+                            <div class="form-group">
+                                <label for="role-needed">Volunteers Needed</label>
+                                <input type="number" id="role-needed" min="1" value="1" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="role-description">Description</label>
+                            <textarea id="role-description" rows="2" placeholder="Role responsibilities and requirements"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="role-experience">Required Experience</label>
+                                <select id="role-experience">
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate">Intermediate</option>
+                                    <option value="experienced">Experienced</option>
+                                </select>
+                            </div>
+                            <div class="form-group checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="role-training">
+                                    Training Required
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Role</button>
+                    </form>
+                </div>
+
+                <div class="list-card">
+                    <h3>Available Roles</h3>
+                    <div id="roles-container" class="roles-grid">
+                        <div class="no-data">No roles defined yet. Click "Load Standard Swim Meet Roles" to get started.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QR Codes Section -->
+            <section id="qr-codes" class="section">
+                <div class="section-header">
+                    <h2>🔳 QR Code Generator</h2>
+                    <p class="subtitle">Generate unique QR codes for volunteer check-in</p>
+                </div>
+
+                <div class="form-card">
+                    <h3>Generate Individual QR Code</h3>
+                    <form id="qr-generator-form" class="qr-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="qr-volunteer">Select Volunteer</label>
+                                <select id="qr-volunteer" required>
+                                    <option value="">Choose a volunteer...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="qr-meet">Select Meet</label>
+                                <select id="qr-meet" required>
+                                    <option value="">Choose a meet...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="qr-role">Select Role</label>
+                            <select id="qr-role" required>
+                                <option value="">Choose a role...</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary">Generate QR Code</button>
+                    </form>
+                </div>
+
+                <div class="qr-result-card">
+                    <div id="qr-code-container" class="qr-display">
+                        <div class="no-data">QR code will appear here after generation</div>
+                    </div>
+                    <div class="qr-actions">
+                        <button id="download-qr" class="btn-secondary" style="display:none;">Download QR Code</button>
+                    </div>
+                </div>
+
+                <div class="bulk-actions-card">
+                    <h3>Bulk QR Generation</h3>
+                    <p>Generate QR codes for all volunteers and meets</p>
+                    <div class="bulk-buttons">
+                        <button id="generate-all-qrs" class="btn-primary">Generate All QR Codes</button>
+                        <button id="download-all-qrs" class="btn-secondary" style="display:none;">Download All QR Codes (ZIP)</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Scanner Section -->
+            <section id="scanner" class="section">
+                <div class="section-header">
+                    <h2>📱 QR Code Scanner</h2>
+                    <p class="subtitle">Scan volunteer QR codes for check-in</p>
+                </div>
+
+                <div class="scanner-card">
+                    <div class="scanner-controls">
+                        <button id="start-scanner" class="btn-primary">Start Camera</button>
+                        <button id="stop-scanner" class="btn-secondary" style="display:none;">Stop Camera</button>
+                    </div>
+                    
+                    <div id="qr-reader" class="qr-reader"></div>
+                    <div id="scan-result" class="scan-result">
+                        <div class="scan-message">Scan a volunteer QR code to check them in</div>
+                    </div>
+                </div>
+
+                <div class="checkins-card">
+                    <h3>Today's Check-ins</h3>
+                    <div id="checkins-container" class="checkins-list">
+                        <div class="no-data">No check-ins recorded today</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Portal Section -->
+            <section id="portal" class="section">
+                <div class="section-header">
+                    <h2>🏠 My Portal</h2>
+                    <p class="subtitle">Manage HOA member access to the volunteer system</p>
+                </div>
+
+                <div class="form-card">
+                    <h3>Add Portal Member</h3>
+                    <form id="add-portal-member-form" class="portal-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="portal-first-name">First Name</label>
+                                <input type="text" id="portal-first-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="portal-last-name">Last Name</label>
+                                <input type="text" id="portal-last-name" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="portal-email">Email Address</label>
+                            <input type="email" id="portal-email" required>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Member</button>
+                    </form>
+                </div>
+
+                <div class="list-card">
+                    <h3>Portal Members</h3>
+                    <div id="portal-members-container" class="portal-members-grid">
+                        <div class="no-data">No portal members added yet</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Import from Swimtopia</h3>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
             </div>
-            <div class="form-group"><label><input type="checkbox" id="role-training" /> Training Required</label></div>
-            <button type="submit">Add Role</button>
-          </form>
+            <div class="modal-body">
+                <p>Select a CSV file exported from Swimtopia to import volunteers and meet information.</p>
+                <form id="import-form">
+                    <div class="form-group">
+                        <label for="csv-input">Choose CSV File</label>
+                        <input type="file" id="csv-input" accept=".csv,.txt" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Import Data</button>
+                        <button type="button" class="btn-secondary" onclick="closeImportModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
+    </div>
 
-        <div class="roles-list">
-          <h3>Available Roles</h3>
-          <div id="roles-container"><p class="no-data">No roles defined yet. Click "Load Standard Swim Meet Roles" to get started.</p></div>
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="confirm-title">Confirm Action</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message">Are you sure you want to proceed?</p>
+                <div class="form-actions">
+                    <button id="confirm-yes" class="btn-danger">Yes, Proceed</button>
+                    <button id="confirm-no" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
         </div>
-      </section>
+    </div>
 
-      <!---- QR Generator ---->
-      <section id="qr-codes" class="section">
-        <h2>QR Code Generator</h2>
-
-        <div class="form-container">
-          <h3>Generate QR Code</h3>
-          <form id="qr-generator-form">
-            <div class="form-group"><label>Select Volunteer:<select id="qr-volunteer" required><option value="">Choose a volunteer…</option></select></label></div>
-            <div class="form-group"><label>Select Meet:<select id="qr-meet" required><option value="">Choose a meet…</option></select></label></div>
-            <div class="form-group"><label>Select Role:<select id="qr-role" required><option value="">Choose a role…</option></select></label></div>
-            <button type="submit">Generate QR Code</button>
-          </form>
-        </div>
-
-        <div class="qr-result">
-          <div id="qr-code-container"><p class="no-data">QR code will appear here after generation</p></div>
-          <button id="download-qr" style="display:none;">Download QR Code</button>
-        </div>
-      </section>
-
-      <!---- Scanner ---->
-      <section id="scanner" class="section">
-        <h2>QR Code Scanner</h2>
-
-        <div class="scanner-container">
-          <div class="scanner-controls">
-            <button id="start-scanner">Start Camera</button>
-            <button id="stop-scanner" style="display:none;">Stop Camera</button>
-          </div>
-
-          <div id="qr-reader" style="width:100%;max-width:400px;margin:20px auto;"></div>
-          <div id="scan-result" class="scan-result"><p>Scan a volunteer QR code to check them in</p></div>
-        </div>
-
-        <div class="checkins-list">
-          <h3>Today's Check-ins</h3>
-          <div id="checkins-container"><p class="no-data">No check-ins recorded today</p></div>
-        </div>
-      </section>
-
-      <!---- Portal ---->
-      <section id="portal" class="section">
-        <h2>My Portal – Member Access</h2>
-        <div class="form-container">
-          <h3>Add Portal Member</h3>
-          <form id="add-portal-member-form">
-            <div class="form-group"><label>First Name:<input id="portal-first-name" required /></label></div>
-            <div class="form-group"><label>Last Name:<input id="portal-last-name" required /></label></div>
-            <div class="form-group"><label>Email:<input type="email" id="portal-email" required /></label></div>
-            <button type="submit">Add Member</button>
-          </form>
-        </div>
-
-        <div class="portal-members-list">
-          <h3>Portal Members</h3>
-          <div id="portal-members-container"><p class="no-data">No portal members added yet</p></div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
