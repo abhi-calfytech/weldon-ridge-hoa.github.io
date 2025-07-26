@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOA Swim Meet QR Check-In System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">🏊‍♂️ QR Check-In System</h1>
+                <nav class="nav">
+                    <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+                    <button class="nav-btn" data-section="qr-scanner">QR Scanner</button>
+                    <button class="nav-btn" data-section="volunteer-portal">My Portal</button>
+                    <button class="nav-btn" data-section="meets">Meets</button>
+                    <button class="nav-btn" data-section="volunteers">Volunteers</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Admin Dashboard Section -->
+            <section id="dashboard" class="section active">
+                <div class="section-header">
+                    <h2>Admin Dashboard</h2>
+                    <p>Real-time volunteer check-in management</p>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-volunteers">0</div>
+                        <div class="stat-label">Total Volunteers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="checked-in-today">0</div>
+                        <div class="stat-label">Checked In Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="upcoming-meets">0</div>
+                        <div class="stat-label">Upcoming Meets</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-hours">0</div>
+                        <div class="stat-label">Total Hours Logged</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card__body">
+                            <div class="card-header">
+                                <h3>Today's Check-In Status</h3>
+                                <button class="btn btn--sm btn--secondary" onclick="refreshCheckInStatus()">🔄 Refresh</button>
+                            </div>
+                            <div id="checkin-status-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>QR Code Management</h3>
+                            <div id="qr-management">
+                                <p>Generate and manage QR codes for volunteer assignments</p>
+                                <button class="btn btn--primary" onclick="showQRGenerationModal()">Generate QR Codes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-24">
+                    <div class="card__body">
+                        <h3>Live Activity Feed</h3>
+                        <div id="activity-feed"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- QR Scanner Section -->
+            <section id="qr-scanner" class="section">
+                <div class="section-header">
+                    <h2>QR Code Scanner</h2>
+                    <p>Scan volunteer QR codes to check in</p>
+                </div>
+                
+                <div class="scanner-container">
+                    <div class="scanner-card">
+                        <div class="scanner-header">
+                            <div class="scanner-status" id="scanner-status">Ready to scan</div>
+                        </div>
+                        
+                        <div class="scanner-area">
+                            <div id="qr-reader" class="qr-reader"></div>
+                            <div class="scanner-overlay">
+                                <div class="scanner-frame"></div>
+                                <p class="scanner-instructions">Point camera at QR code</p>
+                            </div>
+                        </div>
+                        
+                        <div class="scanner-controls">
+                            <button class="btn btn--primary" id="start-scanner">Start Camera</button>
+                            <button class="btn btn--secondary hidden" id="stop-scanner">Stop Camera</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Check-in Confirmation -->
+                <div class="confirmation-panel hidden" id="confirmation-panel">
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Confirm Check-In</h3>
+                            <div id="volunteer-details"></div>
+                            <div class="confirmation-actions">
+                                <button class="btn btn--primary btn--lg" onclick="confirmCheckIn()">✓ Confirm Check-In</button>
+                                <button class="btn btn--secondary" onclick="cancelCheckIn()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Volunteer Portal Section -->
+            <section id="volunteer-portal" class="section">
+                <div class="section-header">
+                    <h2>Volunteer Portal</h2>
+                    <div class="volunteer-selector">
+                        <select class="form-control" id="volunteer-selector">
+                            <option value="">Select your name</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="volunteer-info" class="hidden">
+                    <div class="volunteer-profile">
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>My Profile</h3>
+                                <div id="volunteer-profile-details"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="assignments-grid">
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>My Assignments</h3>
+                                <div id="volunteer-assignments"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card__body">
+                                <h3>My QR Codes</h3>
+                                <div id="volunteer-qr-codes"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card__body">
+                            <h3>Check-In History</h3>
+                            <div id="volunteer-history"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Meets Section -->
+            <section id="meets" class="section">
+                <div class="section-header">
+                    <h2>Meet Management</h2>
+                    <button class="btn btn--primary" onclick="showAddMeetModal()">+ Add New Meet</button>
+                </div>
+                
+                <div class="meets-grid" id="meets-grid"></div>
+            </section>
+
+            <!-- Volunteers Section -->
+            <section id="volunteers" class="section">
+                <div class="section-header">
+                    <h2>Volunteer Management</h2>
+                    <button class="btn btn--primary" onclick="showAddVolunteerModal()">+ Add Volunteer</button>
+                </div>
+                
+                <div class="volunteers-grid" id="volunteers-grid"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- QR Generation Modal -->
+    <div class="modal hidden" id="qr-generation-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Generate QR Codes</h3>
+                <button class="modal-close" onclick="closeModal('qr-generation-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Select Meet</label>
+                    <select class="form-control" id="qr-meet-select">
+                        <option value="">Choose a meet</option>
+                    </select>
+                </div>
+                <div class="qr-generation-results" id="qr-generation-results"></div>
+                <div class="modal-actions">
+                    <button class="btn btn--primary" onclick="generateAllQRCodes()">Generate All QR Codes</button>
+                    <button class="btn btn--secondary" onclick="closeModal('qr-generation-modal')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Display Modal -->
+    <div class="modal hidden" id="qr-display-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>QR Code</h3>
+                <button class="modal-close" onclick="closeModal('qr-display-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="qr-display-content"></div>
+                <div class="modal-actions">
+                    <button class="btn btn--primary" onclick="printQRCode()">🖨️ Print</button>
+                    <button class="btn btn--secondary" onclick="emailQRCode()">📧 Email</button>
+                    <button class="btn btn--secondary" onclick="closeModal('qr-display-modal')">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generic Form Modal -->
+    <div class="modal hidden" id="form-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="form-modal-title">Form</h3>
+                <button class="modal-close" onclick="closeModal('form-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="form-modal-body">
+                <!-- Dynamic form content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
